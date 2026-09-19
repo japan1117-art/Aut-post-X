@@ -16,7 +16,7 @@
 
 ## 1. Supabase
 
-新規プロジェクトを作り、SQL Editorで `supabase/migrations/001_initial.sql` を実行します。
+新規プロジェクトを作り、SQL Editorで `supabase/migrations/001_initial.sql` を実行します。接続にはSettings → API KeysのSecret key（`sb_secret_...`）を使い、Vercelでは `SUPABASE_SECRET_KEY` という名前で保存します。
 
 ## 2. X Developer App
 
