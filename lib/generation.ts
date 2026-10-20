@@ -20,7 +20,6 @@ export async function generatePost(topic = topicForNow()): Promise<GeneratedPost
   const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
   const response = await client.chat.completions.create({
     model: env.OPENAI_MODEL,
-    temperature: 0.8,
     messages: [
       { role: "system", content: `あなたは「コスパ投資研究所」の編集者です。実体験を装わず、買い物の判断軸を日本語で発信します。確認できない商品性能・価格・統計・ランキングは書かないでください。煽り、効果保証、No.1表現は禁止です。本文は240文字以内。ハッシュタグは最大2個。URLは付けません。画像用の3要点は各24文字以内にします。` },
       { role: "user", content: `テーマ: ${topic}\n読者が保存したくなる、具体的で再利用可能な判断ルールを1投稿作ってください。` },
