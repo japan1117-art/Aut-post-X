@@ -30,7 +30,7 @@ export function validateProductDraft(product: ProductDraft): ProductCheck {
     if (match && product.asin && match[1].toUpperCase() !== product.asin.toUpperCase()) {
       reasons.push("URLのASINと入力ASINが一致しません"); hardFailure = true;
     }
-    if (!match && host !== "amzn.to") reasons.push("URLからASINを確認できません（手動照合が必要）");
+    if (!match) reasons.push("URLからASINを確認できません（短縮URLは転送先の手動照合が必要）");
   }
   if (product.asin && !/^[A-Z0-9]{10}$/i.test(product.asin)) {
     reasons.push("ASINは英数字10文字で入力してください"); hardFailure = true;
