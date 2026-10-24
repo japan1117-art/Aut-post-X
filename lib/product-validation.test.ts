@@ -16,6 +16,6 @@ describe("product preflight", () => {
     expect(validateProductDraft({ ...base, evidenceUrl: "" }).status).toBe("WARNING");
   });
   it("holds short links for manual resolution and verification", () => {
-    expect(validateProductDraft({ ...base, affiliateUrl: "https://amzn.to/example" }).status).toBe("PASS");
+    expect(validateProductDraft({ ...base, affiliateUrl: "https://amzn.to/example" }).status).toBe("WARNING");
   });
 });
