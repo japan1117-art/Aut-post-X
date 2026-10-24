@@ -15,6 +15,9 @@ describe("product preflight", () => {
   it("holds missing evidence for review", () => {
     expect(validateProductDraft({ ...base, evidenceUrl: "" }).status).toBe("WARNING");
   });
+  it("holds link.amazon for redirect verification without rejecting the domain", () => {
+    expect(validateProductDraft({ ...base, affiliateUrl: "https://link.amazon/B08vHNszt" }).status).toBe("WARNING");
+  });
   it("holds short links for manual resolution and verification", () => {
     expect(validateProductDraft({ ...base, affiliateUrl: "https://amzn.to/example" }).status).toBe("WARNING");
   });
