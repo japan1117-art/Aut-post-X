@@ -14,17 +14,31 @@ export default function Page(){
  const [result,setResult]=useState<{draft:DailyStoryDraft;reasons:string[]}|null>(null);
  const [error,setError]=useState("");
  const [loading,setLoading]=useState(false);
+ const [images,setImages]=useState<Record<number,string>>({});
+ const [imageLoading,setImageLoading]=useState<number|null>(null);
  const product=story.product;
  const updateProduct=(patch:Partial<DailyStory["product"]>)=>setStory(s=>({...s,product:{...s.product,...patch}}));
  async function run(){
-  setLoading(true);setError("");setResult(null);
+  setLoading(true);setError("");setResult(null);setImages({});
   try{
    const res=await fetch("/api/daily-story/preview",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify(story)});
    const data=await res.json();
    if(!res.ok) throw new Error(data.errors?.join("、")||data.error||"生成エラー");
    setResult(data);
   }catch(e){setError(e instanceof Error?e.message:String(e));}
-  finally{setLoading(false);setSecret("");}
+  finally{setLoading(false);}
+ }
+ async function generateImage(index:number){
+  const post=result?.draft.posts[index];
+  if(!post || post.kind==="affiliate") return;
+  setImageLoading(index);setError("");
+  try{
+   const res=await fetch("/api/daily-story/image-preview",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({kind:post.kind,text:post.text,theme:story.theme})});
+   const data=await res.json();
+   if(!res.ok) throw new Error(data.error||"画像生成エラー");
+   setImages(s=>({...s,[index]:data.imageDataUrl}));
+  }catch(e){setError(e instanceof Error?e.message:String(e));}
+  finally{setImageLoading(null);}
  }
  const inputStyle={display:"block",width:"100%",padding:9,marginTop:4,marginBottom:12};
  return <main style={{maxWidth:780,margin:"auto",padding:24}}>
@@ -40,6 +54,6 @@ export default function Page(){
   <label>管理者シークレット<input type="password" autoComplete="off" value={secret} onChange={e=>setSecret(e.target.value)} style={inputStyle}/></label>
   <button disabled={!secret||loading} onClick={()=>void run()} style={{padding:12}}>{loading?"生成中…":"3本をAIで生成（公開なし）"}</button>
   {error&&<p role="alert">{error}</p>}
-  {result&&<section><h2>生成結果：レビュー待ち・未公開</h2>{result.draft.posts.map((p,i)=><article key={i} style={{border:"1px solid #888",padding:14,marginBottom:12,borderRadius:8}}><h3>{i+1}本目：{p.kind}</h3><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{p.text}</pre></article>)}<h3>検査結果</h3><p>{result.reasons.length?result.reasons.join("、"):"構成チェック通過（事実・リンクの外部検証は別途必要）"}</p></section>}
+  {result&&<section><h2>生成結果：レビュー待ち・未公開</h2>{result.draft.posts.map((p,i)=><article key={i} style={{border:"1px solid #888",padding:14,marginBottom:12,borderRadius:8}}><h3>{i+1}本目：{p.kind}</h3><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{p.text}</pre>{p.kind!=="affiliate"&&<><button disabled={!secret||imageLoading!==null} onClick={()=>void generateImage(i)}>{imageLoading===i?"画像生成中…":images[i]?"画像を再生成":"この記事に合うGPT画像を1枚生成"}</button>{images[i]&&<><p>画像プレビュー（未公開・未保存）</p><img src={images[i]} alt={`${p.kind}の記事用AI生成画像`} style={{width:"100%",maxWidth:420,height:"auto"}}/><p><a href={images[i]} download={`daily-story-${story.date}-${i+1}.png`}>PNGを保存</a></p></>}</>}</article>)}<h3>検査結果</h3><p>{result.reasons.length?result.reasons.join("、"):"構成チェック通過（事実・リンクの外部検証は別途必要）"}</p></section>}
  </main>;
 }
