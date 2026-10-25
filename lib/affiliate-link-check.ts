@@ -35,8 +35,14 @@ export async function inspectAffiliateRedirect(input: string, expectedAsin: stri
     let response: Response;
     try {
       response = await fetch(current.toString(), { method: "HEAD", redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(5000), headers: { "User-Agent": "AutPostX-LinkPreflight/1.0" } });
-    } catch { return { status: "REVIEW", reason: "リンク到達を確認できません（ネットワーク制限など）" }; }
-    if (![301, 302, 303, 307, 308].includes(response.status)) return { status: "REVIEW", reason: "転送先を確認できません（HTTP " + response.status + "）" };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      const cause = error instanceof Error && "cause" in error ? String(error.cause) : "";
+      const info = (detail + " " + cause).toLowerCase();
+      const kind = /enotfound|eai_again|dns|name resolution/.test(info) ? "DNS名前解決失敗" : /timeout|timed out|abort/.test(info) ? "接続タイムアウト" : /certificate|tls|ssl/.test(info) ? "TLS証明書・接続失敗" : "ネットワーク接続失敗";
+      return { status: "REVIEW", reason: kind + "（URL不正とは限りません）" };
+    }
+    if (![301, 302, 303, 307, 308].includes(response.status)) return { status: "REVIEW", reason: "HEADで転送先を確認できません（HTTP " + response.status + "）。GETとの挙動差・アクセス制限の可能性" };
     const location = response.headers.get("location");
     if (!location) return { status: "REVIEW", reason: "転送先Locationがありません" };
     try { current = new URL(location, current); } catch { return { status: "REVIEW", reason: "転送先URLが不正" }; }
