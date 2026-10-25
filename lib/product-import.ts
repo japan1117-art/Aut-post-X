@@ -11,12 +11,12 @@ export function parseProductCsv(csv: string): CandidateRow[] {
   const records = parseCsvRecords(csv);
   const header = records.shift();
   if (!header) throw new Error("CSVにヘッダーがありません");
-  const ix = (name: string) => {
-    const i = header.indexOf(name);
+  const ix = (name: string, alternatives: string[] = []) => {
+    const i = [name, ...alternatives].map(n => header.indexOf(n)).find(i => i >= 0) ?? -1;
     if (i < 0) throw new Error("必須列がありません: " + name);
     return i;
   };
-  const nameIx = ix("商品名 / 型番"), urlIx = ix("AmazonアフィリURL【入力・要確認】");
+  const nameIx = ix("商品名 / 型番"), urlIx = ix("AmazonアフィリURL【入力・要確認】", ["AmazonアフィリURL【入力】"]);
   const asinIx = ix("ASIN【入力】"), priorityIx = ix("優先順位");
   const categoryIx = ix("ジャンル"), priceIx = ix("調査時参考価格(円)"), evidenceIx = ix("根拠URL");
   return records.filter(r => r.some(v => v.trim())).map((r, index) => {
