@@ -5,8 +5,8 @@ import type {DailyStory,DailyStoryDraft} from "@/lib/daily-story";
 const initial:DailyStory={
  date:new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Tokyo"}),
  theme:"充電環境を快適にする",
- product:{name:"Anker PowerLine III Flow USB-Cケーブル 1.8m",asin:"B093L5CMMT",affiliateUrl:"",verifiedFeatures:["最大240W対応（対応機器と充電器が必要）","折り曲げ試験約25,000回（メーカー公表値、要再確認）","柔軟な構造"],sourceUrls:[]},
- slots:[{kind:"knowledge",angle:"USB-Cの給電規格と充電速度の関係"},{kind:"practical",angle:"スマホとPCでケーブルを共用する条件"},{kind:"affiliate",angle:"技術的特徴、生活での利便性、価格対機能"}]
+ product:{name:"Anker PowerLine III Flow USB-Cケーブル 1.8m",asin:"B093L5CMMT",affiliateUrl:"",verifiedFeatures:["柔軟なケーブル構造（メーカーの該当製品ページで要確認）"],sourceUrls:[]},
+ slots:[{kind:"knowledge",angle:"ケーブルが絡む、曲がり癖、長さ不足など日常のストレスへの共感"},{kind:"practical",angle:"USB-Cケーブルの素材・長さ・対応電力を確認する選び方"},{kind:"affiliate",angle:"技術的特徴、生活での利便性、価格対機能"}]
 };
 export default function Page(){
  const [story,setStory]=useState<DailyStory>(initial);
@@ -76,7 +76,7 @@ export default function Page(){
  const inputStyle={display:"block",width:"100%",padding:9,marginTop:4,marginBottom:12};
  return <main style={{maxWidth:780,margin:"auto",padding:24}}>
   <h1>1日3投稿・ストーリー生成テスト</h1>
-  <p>雑学 → 生活の知恵 → 商品紹介（PR）。AIが文章3本と非PR画像2枚を順次生成します。画像は画面内の一時プレビューのみで、サーバー保存・予約・X公開は行いません。</p>
+  <p>共感・問題提起 → 豆知識・価値の発見 → 商品紹介（PR）。AIが文章3本と非PR画像2枚を順次生成します。画像は画面内の一時プレビューのみで、サーバー保存・予約・X公開は行いません。</p>
   <label>日付<input type="date" value={story.date} onChange={e=>setStory(s=>({...s,date:e.target.value}))} style={inputStyle}/></label>
   <label>QOLテーマ<input value={story.theme} onChange={e=>setStory(s=>({...s,theme:e.target.value}))} style={inputStyle}/></label>
   <label>商品名<input value={product.name} onChange={e=>updateProduct({name:e.target.value})} style={inputStyle}/></label>
