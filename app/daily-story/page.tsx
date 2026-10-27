@@ -18,6 +18,9 @@ export default function Page(){
  const [imageLoading,setImageLoading]=useState<number|null>(null);
  const [batchLoading,setBatchLoading]=useState(false);
  const [batchProgress,setBatchProgress]=useState("");
+ const [confirmed,setConfirmed]=useState(false);
+ const [publishBusy,setPublishBusy]=useState<number|null>(null);
+ const [publishResults,setPublishResults]=useState<Record<number,string>>({});
  const product=story.product;
  const updateProduct=(patch:Partial<DailyStory["product"]>)=>setStory(s=>({...s,product:{...s.product,...patch}}));
  async function requestImage(post:DailyStoryDraft["posts"][number],theme:string){
@@ -28,7 +31,7 @@ export default function Page(){
  }
  async function run(withImages=false){
   if(loading||batchLoading) return;
-  setLoading(true);setBatchLoading(withImages);setBatchProgress("文章3本を生成中");setError("");setResult(null);setImages({});
+  setLoading(true);setBatchLoading(withImages);setBatchProgress("文章3本を生成中");setError("");setResult(null);setImages({});setConfirmed(false);setPublishResults({});
   try{
    const res=await fetch("/api/daily-story/preview",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify(story)});
    const data=await res.json();
@@ -54,9 +57,21 @@ export default function Page(){
   const post=result?.draft.posts[index];
   if(!post || post.kind==="affiliate" || imageLoading!==null || batchLoading) return;
   setImageLoading(index);setError("");
-  try{const image=await requestImage(post,story.theme);setImages(s=>({...s,[index]:image}));}
+  try{const image=await requestImage(post,story.theme);setImages(s=>({...s,[index]:image}));setConfirmed(false);}
   catch(e){setError(e instanceof Error?e.message:String(e));}
   finally{setImageLoading(null);}
+ }
+ async function publishApproved(index:number){
+  if(!result||!confirmed||publishBusy!==null||publishResults[index]?.startsWith("公開成功")) return;
+  if(index<2&&!images[index]){setError("非PR投稿には画像が必要です");return;}
+  setPublishBusy(index);setError("");
+  try{
+   const res=await fetch("/api/daily-story/publish-approved",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({story,draft:result.draft,images:{[index]:images[index]},approved:true,index})});
+   const data=await res.json();
+   if(!res.ok) throw new Error(data.error||data.errors?.join("、")||"公開できませんでした");
+   setPublishResults(s=>({...s,[index]:data.published?"公開成功 X ID: "+data.id:"DRY RUN: 実際の公開なし"}));
+  }catch(e){setError(e instanceof Error?e.message:String(e));}
+  finally{setPublishBusy(null);}
  }
  const inputStyle={display:"block",width:"100%",padding:9,marginTop:4,marginBottom:12};
  return <main style={{maxWidth:780,margin:"auto",padding:24}}>
@@ -72,6 +87,6 @@ export default function Page(){
   <label>管理者シークレット<input type="password" autoComplete="off" value={secret} onChange={e=>setSecret(e.target.value)} style={inputStyle}/></label>
   <button disabled={!secret||loading} onClick={()=>void run(false)} style={{padding:12}}>{loading?"生成中…":"文章3本のみ生成"}</button> <button disabled={!secret||loading} onClick={()=>void run(true)} style={{padding:12,marginLeft:8}}>{batchLoading?"一括生成中…":"文章3本＋画像2枚を一括生成"}</button>{batchProgress&&<p aria-live="polite">{batchProgress}</p>}
   {error&&<p role="alert">{error}</p>}
-  {result&&<section><h2>生成結果：レビュー待ち・未公開</h2>{result.draft.posts.map((p,i)=><article key={i} style={{border:"1px solid #888",padding:14,marginBottom:12,borderRadius:8}}><h3>{i+1}本目：{p.kind}</h3><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{p.text}</pre>{p.kind!=="affiliate"&&<><button disabled={!secret||imageLoading!==null||loading} onClick={()=>void generateImage(i)}>{imageLoading===i?"画像生成中…":images[i]?"画像を再生成":"この記事に合うGPT画像を1枚生成"}</button>{images[i]&&<><p>画像プレビュー（未公開・未保存）</p><img src={images[i]} alt={`${p.kind}の記事用AI生成画像`} style={{width:"100%",maxWidth:420,height:"auto"}}/><p><a href={images[i]} download={`daily-story-${story.date}-${i+1}.png`}>PNGを保存</a></p></>}</>}</article>)}<h3>検査結果</h3><p>{result.reasons.length?result.reasons.join("、"):"構成チェック通過（事実・リンクの外部検証は別途必要）"}</p></section>}
+  {result&&<section><h2>生成結果：レビュー待ち・未公開</h2>{result.draft.posts.map((p,i)=><article key={i} style={{border:"1px solid #888",padding:14,marginBottom:12,borderRadius:8}}><h3>{i+1}本目：{p.kind}</h3><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{p.text}</pre>{p.kind!=="affiliate"&&<><button disabled={!secret||imageLoading!==null||loading} onClick={()=>void generateImage(i)}>{imageLoading===i?"画像生成中…":images[i]?"画像を再生成":"この記事に合うGPT画像を1枚生成"}</button>{images[i]&&<><p>画像プレビュー（未公開・未保存）</p><img src={images[i]} alt={`${p.kind}の記事用AI生成画像`} style={{width:"100%",maxWidth:420,height:"auto"}}/><p><a href={images[i]} download={`daily-story-${story.date}-${i+1}.png`}>PNGを保存</a></p></>}</>}</article>)}<h3>公開前の最終確認</h3><p>文章3本・画像2枚・PRリンク・根拠を目視確認してください。公開は1本ずつ明示操作が必要です。現在、サーバー側の本番公開ロックが有効です。</p><label><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)} disabled={result.reasons.length>0||!images[0]||!images[1]}/> 3投稿と画像2枚、商品情報・PR表記を確認しました</label>{result.draft.posts.map((p,i)=><div key={i} style={{marginTop:12}}><button disabled={!confirmed||!secret||publishBusy!==null||Boolean(publishResults[i]?.startsWith("公開成功"))} onClick={()=>void publishApproved(i)}>{publishBusy===i?"送信中…":`${i+1}本目を承認して公開`}</button> {publishResults[i]||""}</div>)}<h3>検査結果</h3><p>{result.reasons.length?result.reasons.join("、"):"構成チェック通過（事実・リンクの外部検証は別途必要）"}</p></section>}
  </main>;
 }
