@@ -17,11 +17,11 @@ export async function POST(req:NextRequest){
   if(!response.ok)throw Error();
   const xml=(await response.text()).slice(0,500000);
   const canonical=(s:string)=>s.replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'").trim();
-  const valid=(xml.match(/<item\\b[\\s\\S]*?<\\/item>/gi)||[]).some(item=>{
-   const rawTitle=item.match(/<title(?:\\s[^>]*)?>([\\s\\S]*?)<\\/title>/i)?.[1]||"";
-   const rawLink=item.match(/<link(?:\\s[^>]*)?>([\\s\\S]*?)<\\/link>/i)?.[1]||"";
-   const title=canonical(rawTitle.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g,"$1"));
-   const link=canonical(rawLink.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g,"$1"));
+  const valid=(xml.match(/<item\b[\s\S]*?<\/item>/gi)||[]).some(item=>{
+   const rawTitle=item.match(/<title(?:\s[^>]*)?>([\s\S]*?)<\/title>/i)?.[1]||"";
+   const rawLink=item.match(/<link(?:\s[^>]*)?>([\s\S]*?)<\/link>/i)?.[1]||"";
+   const title=canonical(rawTitle.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1"));
+   const link=canonical(rawLink.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1"));
    return title===source.title && link===source.url;
   });
   if(!valid)return NextResponse.json({error:"Official feed did not confirm source title and URL"},{status:422});
