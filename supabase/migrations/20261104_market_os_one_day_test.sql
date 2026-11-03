@@ -5,7 +5,8 @@ create table if not exists public.market_os_test_control (
  max_posts integer not null default 3,
  claimed_count integer not null default 0,
  enabled boolean not null default false,
- updated_at timestamptz not null default now()
+ updated_at timestamptz not null default now(),
+ constraint market_os_test_quota_check check(max_posts between 1 and 3 and claimed_count between 0 and max_posts and ends_at>starts_at)
 );
 alter table public.market_os_test_control enable row level security;
 revoke all on public.market_os_test_control from anon,authenticated;
