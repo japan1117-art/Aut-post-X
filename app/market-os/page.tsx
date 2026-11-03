@@ -11,6 +11,7 @@ export default function MarketOS() {
  const [message,setMessage]=useState("");
  const [posts,setPosts]=useState<{id:string;body:string;publication_state:string;x_post_id:string|null}[]>([]);
  const [live,setLive]=useState(false);
+ const [test,setTest]=useState<{state:string;claimed_count:number;max_posts:number;enabled:boolean}|null>(null);
  async function scan(){
   setLoading(true);setMessage("");setCandidates([]);
   try {
