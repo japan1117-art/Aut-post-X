@@ -69,7 +69,7 @@ export default function Page(){
   try{
    const res=await fetch("/api/daily-story/publish-approved",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({story,draft:result.draft,images:{[index]:images[index]},approved:true,index})});
    const data=await res.json();
-   if(!res.ok){if(res.status===423)setPublishLocked(true);throw new Error(data.error||data.errors?.join("、")||"公開できませんでした");}
+   if(!res.ok){throw new Error(data.error||data.errors?.join("、")||"公開できませんでした");}
    setPublishResults(s=>({...s,[index]:data.published?"公開成功 X ID: "+data.id:"DRY RUN: 実際の公開なし"}));
   }catch(e){setError(e instanceof Error?e.message:String(e));}
   finally{setPublishBusy(null);}
@@ -77,7 +77,7 @@ export default function Page(){
  const inputStyle={display:"block",width:"100%",padding:9,marginTop:4,marginBottom:12};
  return <main style={{maxWidth:780,margin:"auto",padding:24}}>
   <h1>1日3投稿・ストーリー生成テスト</h1>
-  <p>共感・問題提起 → 豆知識・価値の発見 → 商品紹介（PR）。AIが文章3本と非PR画像2枚を順次生成します。画像は画面内の一時プレビューのみで、サーバー保存・予約・X公開は行いません。</p>
+  <p>共感・問題提起 → 豆知識・価値の発見 → 商品紹介（PR）。AIが文章3本と非PR画像2枚を順次生成します。画像は一時プレビューです。Xへの公開には個別承認とサーバー側の公開許可が必要です。</p>
   <label>日付<input type="date" value={story.date} onChange={e=>setStory(s=>({...s,date:e.target.value}))} style={inputStyle}/></label>
   <label>QOLテーマ<input value={story.theme} onChange={e=>setStory(s=>({...s,theme:e.target.value}))} style={inputStyle}/></label>
   <label>商品名<input value={product.name} onChange={e=>updateProduct({name:e.target.value})} style={inputStyle}/></label>
