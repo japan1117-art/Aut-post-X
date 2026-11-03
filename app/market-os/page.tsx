@@ -22,7 +22,7 @@ export default function MarketOS() {
   }catch(e){setMessage(e instanceof Error?e.message:"エラー");}finally{setLoading(false);}
  }
  async function refresh(){
-  try{const r=await fetch("/api/market-os/status",{headers:{"x-admin-secret":secret}});const data=await r.json();if(!r.ok)throw Error(data.error||"取得失敗");setPosts(data.posts||[]);setLive(data.publishingEnabled);}catch(e){setMessage(String(e));}
+  try{const r=await fetch("/api/market-os/status",{headers:{"x-admin-secret":secret}});const data=await r.json();if(!r.ok)throw Error(data.error||"取得失敗");setPosts(data.posts||[]);setLive(data.publishingEnabled);setTest(data.test||null);}catch(e){setMessage(String(e));}
  }
  async function draft(c:MarketCandidate){
   try{const r=await fetch("/api/market-os/draft",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({title:c.title,url:c.url,publisher:c.publisher,publishedAt:c.publishedAt,category:c.category})});const data=await r.json();if(!r.ok)throw Error(data.error||"保存失敗");setMessage("結果: "+data.status);await refresh();}catch(e){setMessage(String(e));}
@@ -45,7 +45,7 @@ export default function MarketOS() {
   <button onClick={scan} disabled={loading||!secret||!categories.length} style={{margin:"16px 0",padding:12}}>{loading?"取得中...":"公式情報を収集してスコアリング"}</button>
   <p role="status">{message}</p>
   {errors.length>0&&<p>取得できなかったソース: {errors.join(", ")}</p>}
-  <p><button disabled={!secret} onClick={()=>void refresh()}>保存済み下書き・公開履歴を確認</button> <button disabled={!secret} onClick={()=>void metrics()}>X公開反応を取得</button> 公開機能: {live?"有効":"ロック中"}</p>
+  <p><button disabled={!secret} onClick={()=>void refresh()}>保存済み下書き・公開履歴を確認</button> <button disabled={!secret} onClick={()=>void metrics()}>X公開反応を取得</button> テスト: {test?`${test.state} / ${test.claimed_count}件確保（上限${test.max_posts}件）`:"未取得"} 公開機能: {live?"有効":"ロック中"}</p>
   {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void generate(p.id)}>AI下書き生成・安全審査</button> <button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
   {candidates.map((c,i)=><article key={c.url+":"+c.category+":"+i} style={{border:"1px solid #777",borderRadius:10,padding:16,margin:"12px 0"}}>
    <strong>{c.score}/100 — {c.title}</strong>
