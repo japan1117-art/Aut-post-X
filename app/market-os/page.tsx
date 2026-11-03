@@ -9,6 +9,8 @@ export default function MarketOS() {
  const [errors,setErrors]=useState<string[]>([]);
  const [loading,setLoading]=useState(false);
  const [message,setMessage]=useState("");
+ const [posts,setPosts]=useState<{id:string;body:string;publication_state:string;x_post_id:string|null}[]>([]);
+ const [live,setLive]=useState(false);
  async function scan(){
   setLoading(true);setMessage("");setCandidates([]);
   try {
@@ -19,6 +21,16 @@ export default function MarketOS() {
    setMessage("候補取得完了。投稿は行っていません。");
   }catch(e){setMessage(e instanceof Error?e.message:"エラー");}finally{setLoading(false);}
  }
+ async function refresh(){
+  try{const r=await fetch("/api/market-os/status",{headers:{"x-admin-secret":secret}});const data=await r.json();if(!r.ok)throw Error(data.error||"取得失敗");setPosts(data.posts||[]);setLive(data.publishingEnabled);}catch(e){setMessage(String(e));}
+ }
+ async function draft(c:MarketCandidate){
+  try{const r=await fetch("/api/market-os/draft",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({title:c.title,url:c.url,publisher:c.publisher,publishedAt:c.publishedAt,category:c.category})});const data=await r.json();if(!r.ok)throw Error(data.error||"保存失敗");setMessage("結果: "+data.status);await refresh();}catch(e){setMessage(String(e));}
+ }
+ async function publish(id:string){
+  if(!window.confirm("この投稿をXに実際に公開しますか？"))return;
+  try{const r=await fetch("/api/market-os/publish",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({postId:id})});const data=await r.json();setMessage("公開結果: "+data.status+(data.xPostId?" X ID "+data.xPostId:""));await refresh();}catch(e){setMessage(String(e));}
+ }
  return <main style={{maxWidth:920,margin:"auto",padding:24}}>
   <h1>Market Content OS — 検証版</h1>
   <p>投資・FX・暗号資産の一次情報候補を収集して採点します。現在は安全のため投稿・予約・自動公開を無効化しています。</p>
@@ -27,11 +39,13 @@ export default function MarketOS() {
   <button onClick={scan} disabled={loading||!secret||!categories.length} style={{margin:"16px 0",padding:12}}>{loading?"取得中...":"公式情報を収集してスコアリング"}</button>
   <p role="status">{message}</p>
   {errors.length>0&&<p>取得できなかったソース: {errors.join(", ")}</p>}
+  <p><button disabled={!secret} onClick={()=>void refresh()}>保存済み下書き・公開履歴を確認</button> 公開機能: {live?"有効":"ロック中"}</p>
+  {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
   {candidates.map((c,i)=><article key={c.url+":"+c.category+":"+i} style={{border:"1px solid #777",borderRadius:10,padding:16,margin:"12px 0"}}>
    <strong>{c.score}/100 — {c.title}</strong>
    <p>{c.publisher} / {c.category} / {new Date(c.publishedAt).toLocaleString("ja-JP")}</p>
    <p>需要 {c.breakdown.demand}・信頼性 {c.breakdown.credibility}・独自性 {c.breakdown.novelty}・鮮度 {c.breakdown.recency}</p>
-   <a href={c.url} target="_blank" rel="noopener noreferrer">一次情報を確認</a>
+   <a href={c.url} target="_blank" rel="noopener noreferrer">一次情報を確認</a> <button disabled={!secret} onClick={()=>void draft(c)}>引用付き下書きを保存</button>
   </article>)}
  </main>;
 }
