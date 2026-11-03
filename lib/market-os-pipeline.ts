@@ -1,10 +1,11 @@
+import {testWindowOpen} from "@/lib/market-os-test-window";
 import { db } from "@/lib/db";
 import { TwitterApi } from "twitter-api-v2";
 import { requireXEnv } from "@/lib/env";
 import { marketDraftSafety, scoreMarketSource, type MarketCategory, type MarketSource } from "@/lib/market-os";
 import { createHash } from "node:crypto";
 
-export const marketEnabled = () => process.env.MARKET_OS_LIVE_PUBLISH === "enabled";
+export const marketEnabled = () => testWindowOpen() && process.env.MARKET_OS_LIVE_PUBLISH === "enabled";
 export function makeSourcePost(source:MarketSource):string {
  // Deliberately avoid unverified claims: a neutral announcement, exact source headline, and source URL.
  const prefix = source.category === "crypto" ? "暗号資産の一次情報" : source.category === "fx" ? "為替・金融政策の一次情報" : "投資・金融市場の一次情報";
@@ -37,8 +38,8 @@ export async function publishMarketPost(postId:string) {
  if(topicError||!topic||!["Federal Reserve","SEC"].includes(topic.source_publisher))return {status:"BLOCKED",reason:"source"};
  const safety=marketDraftSafety(post.body,topic.source_url,[]);
  if(!safety.pass)return {status:"BLOCKED",reason:safety.reasons};
- const claim=await client.from("market_os_posts").update({publication_state:"CLAIMED"}).eq("id",post.id).eq("publication_state","DRAFT").select("id");
- if(claim.error||claim.data?.length!==1)return {status:"SKIPPED",reason:"already claimed"};
+ const claim=await client.rpc("market_os_claim_test_slot",{p_post_id:post.id});
+ if(claim.error||claim.data!==true)return {status:"SKIPPED",reason:"outside test window, quota reached, or already claimed"};
  try {
   const twitter=new TwitterApi(requireXEnv());
   const published=await twitter.v2.tweet(post.body);
