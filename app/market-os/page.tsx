@@ -27,20 +27,26 @@ export default function MarketOS() {
  async function draft(c:MarketCandidate){
   try{const r=await fetch("/api/market-os/draft",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({title:c.title,url:c.url,publisher:c.publisher,publishedAt:c.publishedAt,category:c.category})});const data=await r.json();if(!r.ok)throw Error(data.error||"保存失敗");setMessage("結果: "+data.status);await refresh();}catch(e){setMessage(String(e));}
  }
+ async function generate(id:string){
+  try{const r=await fetch("/api/market-os/generate",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({postId:id})});const data=await r.json();if(!r.ok)throw Error(data.error||"生成失敗");setMessage("下書き生成: "+data.mode);await refresh();}catch(e){setMessage(String(e));}
+ }
+ async function metrics(){
+  try{const r=await fetch("/api/market-os/metrics",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret}});const data=await r.json();if(!r.ok)throw Error(data.error||"取得失敗");setMessage("反応データ更新: "+data.updated+"件 / 失敗: "+data.failed+"件");}catch(e){setMessage(String(e));}
+ }
  async function publish(id:string){
   if(!window.confirm("この投稿をXに実際に公開しますか？"))return;
   try{const r=await fetch("/api/market-os/publish",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({postId:id})});const data=await r.json();setMessage("公開結果: "+data.status+(data.xPostId?" X ID "+data.xPostId:""));await refresh();}catch(e){setMessage(String(e));}
  }
  return <main style={{maxWidth:920,margin:"auto",padding:24}}>
   <h1>Market Content OS — 検証版</h1>
-  <p>投資・FX・暗号資産の一次情報候補を収集して採点します。現在は安全のため投稿・予約・自動公開を無効化しています。</p>
+  <p>投資・FX・暗号資産の一次情報候補を収集して採点します。AI下書き生成・安全審査・公開履歴確認が可能です。自動公開は専用フラグが無効の間ロックされます。</p>
   <section style={{display:"flex",gap:20,flexWrap:"wrap",margin:"20px 0"}}>{choices.map(c=><label key={c.key}><input type="checkbox" checked={categories.includes(c.key)} onChange={e=>setCategories(v=>e.target.checked?[...v,c.key]:v.filter(x=>x!==c.key))}/>{c.label}</label>)}</section>
   <label>管理用シークレット（サーバーには保存しません）<input type="password" autoComplete="off" value={secret} onChange={e=>setSecret(e.target.value)} style={{display:"block",padding:10,width:"100%",maxWidth:450}}/></label>
   <button onClick={scan} disabled={loading||!secret||!categories.length} style={{margin:"16px 0",padding:12}}>{loading?"取得中...":"公式情報を収集してスコアリング"}</button>
   <p role="status">{message}</p>
   {errors.length>0&&<p>取得できなかったソース: {errors.join(", ")}</p>}
-  <p><button disabled={!secret} onClick={()=>void refresh()}>保存済み下書き・公開履歴を確認</button> 公開機能: {live?"有効":"ロック中"}</p>
-  {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
+  <p><button disabled={!secret} onClick={()=>void refresh()}>保存済み下書き・公開履歴を確認</button> <button disabled={!secret} onClick={()=>void metrics()}>X公開反応を取得</button> 公開機能: {live?"有効":"ロック中"}</p>
+  {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void generate(p.id)}>AI下書き生成・安全審査</button> <button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
   {candidates.map((c,i)=><article key={c.url+":"+c.category+":"+i} style={{border:"1px solid #777",borderRadius:10,padding:16,margin:"12px 0"}}>
    <strong>{c.score}/100 — {c.title}</strong>
    <p>{c.publisher} / {c.category} / {new Date(c.publishedAt).toLocaleString("ja-JP")}</p>
