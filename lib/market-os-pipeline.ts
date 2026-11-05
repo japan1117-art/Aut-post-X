@@ -1,3 +1,4 @@
+import {reviewEditorialSafety} from "@/lib/market-os-editorial-policy";
 import {testWindowOpen} from "@/lib/market-os-test-window";
 import { db } from "@/lib/db";
 import { TwitterApi } from "twitter-api-v2";
@@ -37,7 +38,8 @@ export async function publishMarketPost(postId:string) {
  const {data:topic,error:topicError}=await client.from("market_os_topics").select("source_url,source_publisher").eq("id",post.topic_id).single();
  if(topicError||!topic||!["Federal Reserve","SEC"].includes(topic.source_publisher))return {status:"BLOCKED",reason:"source"};
  const safety=marketDraftSafety(post.body,topic.source_url,[]);
- if(!safety.pass)return {status:"BLOCKED",reason:safety.reasons};
+ const editorial=reviewEditorialSafety(post.body);
+ if(!safety.pass||!editorial.pass)return {status:"BLOCKED",reason:[...safety.reasons,...editorial.reasons]};
  const claim=await client.rpc("market_os_claim_test_slot",{p_post_id:post.id});
  if(claim.error||claim.data!==true)return {status:"SKIPPED",reason:"outside test window, quota reached, or already claimed"};
  try {
