@@ -1,9 +1,8 @@
 import OpenAI from "openai";
-import sharp from "sharp";
+import {makeJapaneseInfographic} from "@/lib/market-os-infographic-v4";
 import {EDITORIAL_POLICY,reviewEditorialSafety} from "@/lib/market-os-editorial-policy";
 import type {MarketSource} from "@/lib/market-os";
 
-const escapeXml=(s:string)=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const allowedHosts:Record<string,string[]>={
  "SEC":["sec.gov","www.sec.gov"],
  "Federal Reserve":["federalreserve.gov","www.federalreserve.gov"]
@@ -42,19 +41,6 @@ export async function createEditorialPreview(source:MarketSource):Promise<Editor
  if(/[A-Za-z]{8,}(?:\\s+[A-Za-z]{4,}){3,}/.test(data.headline))throw new Error("Japanese headline required");
  const safety=reviewEditorialSafety(data.headline+"\n"+data.article+"\n"+data.summary);
  if(!safety.pass)throw new Error("Editorial safety rejected: "+safety.reasons.join(","));
- const title=[...data.headline].slice(0,34).join("");
- const summary=[...data.summary].slice(0,40).join("");
- // Deterministic vector design: no fabricated chart data, logos, or AI-drawn text.
- const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675">
- <rect width="1200" height="675" fill="#101728"/><rect x="55" y="48" width="1090" height="579" rx="24" fill="#19243c" stroke="#566a96" stroke-width="2"/>
- <rect x="90" y="90" width="190" height="42" rx="12" fill="#b7a173"/><text x="108" y="119" font-family="sans-serif" font-size="23" font-weight="bold" fill="#111827">MARKET INSIGHT</text>
- <text x="90" y="235" font-family="sans-serif" font-size="42" font-weight="bold" fill="#f6f1e8">${escapeXml([...title].slice(0,18).join(""))}</text>
- <text x="90" y="295" font-family="sans-serif" font-size="42" font-weight="bold" fill="#f6f1e8">${escapeXml([...title].slice(18).join(""))}</text>
- <line x1="90" y1="350" x2="1110" y2="350" stroke="#b7a173" stroke-width="3"/>
- <text x="90" y="430" font-family="sans-serif" font-size="30" fill="#d6deee">${escapeXml([...summary].slice(0,25).join(""))}</text>
- <text x="90" y="475" font-family="sans-serif" font-size="30" fill="#d6deee">${escapeXml([...summary].slice(25).join(""))}</text>
- <text x="90" y="570" font-family="sans-serif" font-size="24" fill="#aab6cb">SOURCE: ${escapeXml(source.publisher)} · Analysis / Education</text>
- </svg>`;
- const image=await sharp(Buffer.from(svg)).png().toBuffer();
+ const image=await makeJapaneseInfographic({headline:data.headline,article:data.article,summary:data.summary,publisher:source.publisher});
  return {headline:data.headline,article:data.article,summary:data.summary,sourceUrl:source.url,imageBase64:image.toString("base64"),mode:"PREVIEW_ONLY"};
 }
