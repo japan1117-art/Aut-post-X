@@ -12,6 +12,7 @@ export default function MarketOS() {
  const [posts,setPosts]=useState<{id:string;body:string;publication_state:string;x_post_id:string|null}[]>([]);
  const [live,setLive]=useState(false);
  const [generatingId,setGeneratingId]=useState<string|null>(null);
+ const [previewStatus,setPreviewStatus]=useState<{postId:string;state:"running"|"success"|"error";message:string}|null>(null);
  const [testResult,setTestResult]=useState<{status:string;checks?:Record<string,boolean>}|null>(null);
  const [editorial,setEditorial]=useState<{headline:string;article:string;summary:string;sourceUrl:string;imageBase64:string}|null>(null);
  const [test,setTest]=useState<{state:string;claimed_count:number;max_posts:number;enabled:boolean}|null>(null);
@@ -44,12 +45,12 @@ export default function MarketOS() {
   }catch(e){setMessage(String(e));}
  }
  async function editorialPreview(id:string){
-  setGeneratingId(id);setMessage("記事本文を確認し、考察と画像を生成しています。最大60秒ほどかかる場合があります。");setEditorial(null);
+  setGeneratingId(id);setPreviewStatus({postId:id,state:"running",message:"生成中です。公式記事の取得とAI分析に最大60秒ほどかかります。"});setMessage("記事生成中です。結果は押したボタンのすぐ下に表示されます。");setEditorial(null);
   try{
    const r=await fetch("/api/market-os/editorial-preview",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({postId:id})});
    const data=await r.json();if(!r.ok)throw Error(data.error||"生成失敗");
-   setEditorial(data);setMessage("v3記事・画像のプレビューを作成しました。Xには投稿していません。");
-  }catch(e){setMessage("生成に失敗しました: "+String(e));}finally{setGeneratingId(null);}
+   setEditorial(data);setPreviewStatus({postId:id,state:"success",message:"記事と画像を生成しました。結果はこの下に表示しています。Xには投稿していません。"});setMessage("v3記事・画像のプレビューを作成しました。Xには投稿していません。");
+  }catch(e){const detail=e instanceof Error?e.message:String(e);setPreviewStatus({postId:id,state:"error",message:"生成失敗: "+detail});setMessage("生成に失敗しました: "+detail);}finally{setGeneratingId(null);}
  }
  async function metrics(){
   try{const r=await fetch("/api/market-os/metrics",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret}});const data=await r.json();if(!r.ok)throw Error(data.error||"取得失敗");setMessage("反応データ更新: "+data.updated+"件 / 失敗: "+data.failed+"件");}catch(e){setMessage(String(e));}
@@ -71,7 +72,7 @@ export default function MarketOS() {
   {editorial&&<section style={{border:"2px solid #b7a173",borderRadius:14,padding:18,margin:"18px 0"}}><h2>v3 記事＋画像プレビュー（未投稿）</h2><h3>{editorial.headline}</h3><p style={{whiteSpace:"pre-wrap",lineHeight:1.8}}>{editorial.article}</p><p><a href={editorial.sourceUrl} target="_blank" rel="noopener noreferrer">公式出典</a></p><img alt="記事の要点を示す解説画像" src={"data:image/png;base64,"+editorial.imageBase64} style={{width:"100%",maxWidth:650}}/></section>}
   <h2>保存済み下書き（記事生成前・未投稿）</h2>
   {posts.filter(p=>p.publication_state==="DRAFT").length===0&&<p role="status" style={{padding:16,border:"1px solid #b7a173",borderRadius:10}}>生成できる下書きがありません。下の「ニュース候補（英語の原文見出し・未投稿）」から「ニュース候補を保存（未投稿）」を押してください。保存できたらここに下書きが表示されます。すでに保存済み・投稿済みのニュースは重複保存できないため、別の候補を選んでください。</p>}
-  {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void generate(p.id)}>AI下書き生成・安全審査</button> <button disabled={!secret||p.publication_state!=="DRAFT"||generatingId!==null} onClick={()=>void editorialPreview(p.id)}>{generatingId===p.id?"生成中…":"日本語の考察記事＋画像を生成（未投稿）"}</button> <button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
+  {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void generate(p.id)}>AI下書き生成・安全審査</button> <button disabled={!secret||p.publication_state!=="DRAFT"||generatingId!==null} onClick={()=>void editorialPreview(p.id)}>{generatingId===p.id?"生成中…":"日本語の考察記事＋画像を生成（未投稿）"}</button> {previewStatus?.postId===p.id&&<div role="status" aria-live="polite" style={{padding:14,marginTop:12,border:"2px solid "+(previewStatus.state==="error"?"#e57373":"#b7a173"),borderRadius:10,whiteSpace:"pre-wrap"}}><strong>{previewStatus.state==="running"?"処理中":previewStatus.state==="success"?"生成成功":"生成エラー"}</strong><p>{previewStatus.message}</p>{previewStatus.state==="success"&&editorial&&<section><h3>{editorial.headline}</h3><p style={{whiteSpace:"pre-wrap",lineHeight:1.8}}>{editorial.article}</p><p><a href={editorial.sourceUrl} target="_blank" rel="noopener noreferrer">公式出典</a></p><img alt="記事の解説画像" src={"data:image/png;base64,"+editorial.imageBase64} style={{width:"100%",maxWidth:650}}/></section>}</div>} <button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
   <h2>ニュース候補（英語の原文見出し・未投稿）</h2>
   {candidates.map((c,i)=><article key={c.url+":"+c.category+":"+i} style={{border:"1px solid #777",borderRadius:10,padding:16,margin:"12px 0"}}>
    <strong>ニュース候補・未投稿 | 評価 {c.score}/100</strong><p>{c.title}</p>
