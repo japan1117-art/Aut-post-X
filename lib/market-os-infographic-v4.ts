@@ -6,7 +6,7 @@ import {tmpdir} from "node:os";
 const FONT_PATH=join(tmpdir(),"market-os-noto-sans-jp-v4.ttf");
 const FONT_URL="https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf";
 let fontPromise:Promise<string>|undefined;
-async function japaneseFont():Promise<string>{
+export async function warmJapaneseFont():Promise<string>{
  if(!fontPromise)fontPromise=(async()=>{
   try{if((await stat(FONT_PATH)).size>100000)return FONT_PATH;}catch{}
   const response=await fetch(FONT_URL,{signal:AbortSignal.timeout(15000)});
@@ -37,7 +37,7 @@ async function textLayer(fontfile:string,value:string,x:number,y:number,size:num
  return {input:rendered,left:x,top:y};
 }
 export async function makeJapaneseInfographic(input:{headline:string;article:string;summary:string;publisher:string}):Promise<Buffer>{
- const font=await japaneseFont();
+ const font=await warmJapaneseFont();
  const facts=section(input.article,"確認できる事実")||input.summary;
  const analysis=section(input.article,"考察")||section(input.article,"なぜ重要か")||input.summary;
  const watch=section(input.article,"注目点")||section(input.article,"反対シナリオ・リスク")||input.summary;
