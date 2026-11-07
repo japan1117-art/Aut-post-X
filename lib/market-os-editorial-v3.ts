@@ -24,10 +24,8 @@ export async function fetchOfficialArticle(source:MarketSource):Promise<string>{
  return text;
 }
 export type EditorialPreview={headline:string;article:string;summary:string;sourceUrl:string;imageBase64:string;mode:"PREVIEW_ONLY"};
-export async function createEditorialPreview(source:MarketSource):Promise<EditorialPreview>{
- const fontReady=warmJapaneseFont();
- // Start the font download before article retrieval and AI generation; observe errors immediately.
- void fontReady.catch(()=>{});
+export type EditorialText={headline:string;article:string;summary:string;sourceUrl:string;mode:"PREVIEW_ONLY"};
+export async function createEditorialText(source:MarketSource):Promise<EditorialText>{
  const original=await fetchOfficialArticle(source);
  const client=new OpenAI({apiKey:process.env.OPENAI_API_KEY,timeout:40000,maxRetries:0});
  let result:Awaited<ReturnType<typeof client.chat.completions.create>>;
@@ -45,7 +43,18 @@ export async function createEditorialPreview(source:MarketSource):Promise<Editor
  if(/[A-Za-z]{8,}(?:\\s+[A-Za-z]{4,}){3,}/.test(data.headline))throw new Error("Japanese headline required");
  const safety=reviewEditorialSafety(data.headline+"\n"+data.article+"\n"+data.summary);
  if(!safety.pass)throw new Error("Editorial safety rejected: "+safety.reasons.join(","));
- await fontReady;
- const image=await makeJapaneseInfographic({headline:data.headline,article:data.article,summary:data.summary,publisher:source.publisher});
- return {headline:data.headline,article:data.article,summary:data.summary,sourceUrl:source.url,imageBase64:image.toString("base64"),mode:"PREVIEW_ONLY"};
+ return {headline:data.headline,article:data.article,summary:data.summary,sourceUrl:source.url,mode:"PREVIEW_ONLY"};
+}
+
+export async function createEditorialImage(input:EditorialText,publisher:string):Promise<string>{
+ const safety=reviewEditorialSafety(input.headline+"\n"+input.article+"\n"+input.summary);
+ if(!safety.pass)throw new Error("Editorial safety rejected: "+safety.reasons.join(","));
+ await warmJapaneseFont();
+ const image=await makeJapaneseInfographic({headline:input.headline,article:input.article,summary:input.summary,publisher});
+ return image.toString("base64");
+}
+export async function createEditorialPreview(source:MarketSource):Promise<EditorialPreview>{
+ const text=await createEditorialText(source);
+ const imageBase64=await createEditorialImage(text,source.publisher);
+ return {...text,imageBase64};
 }
