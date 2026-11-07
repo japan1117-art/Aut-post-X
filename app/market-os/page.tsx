@@ -11,6 +11,7 @@ export default function MarketOS() {
  const [message,setMessage]=useState("");
  const [posts,setPosts]=useState<{id:string;body:string;publication_state:string;x_post_id:string|null}[]>([]);
  const [live,setLive]=useState(false);
+ const [testResult,setTestResult]=useState<{status:string;checks?:Record<string,boolean>}|null>(null);
  const [editorial,setEditorial]=useState<{headline:string;article:string;summary:string;sourceUrl:string;imageBase64:string}|null>(null);
  const [test,setTest]=useState<{state:string;claimed_count:number;max_posts:number;enabled:boolean}|null>(null);
  async function scan(){
@@ -31,6 +32,15 @@ export default function MarketOS() {
  }
  async function generate(id:string){
   try{const r=await fetch("/api/market-os/generate",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({postId:id})});const data=await r.json();if(!r.ok)throw Error(data.error||"生成失敗");setMessage("下書き生成: "+data.mode);await refresh();}catch(e){setMessage(String(e));}
+ }
+ async function testV3(){
+  setMessage("v3の本文取得・記事・画像・安全審査をテスト中です（Xには投稿しません）");setTestResult(null);setEditorial(null);
+  try{
+   const r=await fetch("/api/market-os/test-v3",{method:"POST",headers:{"x-admin-secret":secret}});
+   const data=await r.json();setTestResult({status:data.status,checks:data.checks});
+   if(data.preview)setEditorial(data.preview);
+   setMessage(data.message||data.error||("v3テスト結果: "+data.status+"（X投稿なし）"));
+  }catch(e){setMessage(String(e));}
  }
  async function editorialPreview(id:string){
   setMessage("記事本文を確認し、考察と画像を生成しています...");setEditorial(null);
@@ -56,6 +66,7 @@ export default function MarketOS() {
   <p role="status">{message}</p>
   {errors.length>0&&<p>取得できなかったソース: {errors.join(", ")}</p>}
   <p><button disabled={!secret} onClick={()=>void refresh()}>保存済み下書き・公開履歴を確認</button> <button disabled={!secret} onClick={()=>void metrics()}>X公開反応を取得</button> テスト: {test?`${test.state} / ${test.claimed_count}件確保（上限${test.max_posts}件）`:"未取得"} 公開機能: {live?"有効":"ロック中"}</p>
+  <p><button disabled={!secret} onClick={()=>void testV3()}>v3 総合テスト実行（X投稿なし）</button> {testResult&&<strong>結果: {testResult.status} {testResult.checks&&Object.entries(testResult.checks).map(([k,v])=>k+":"+(v?"PASS":"FAIL")).join(" / ")}</strong>}</p>
   {editorial&&<section style={{border:"2px solid #b7a173",borderRadius:14,padding:18,margin:"18px 0"}}><h2>v3 記事＋画像プレビュー（未投稿）</h2><h3>{editorial.headline}</h3><p style={{whiteSpace:"pre-wrap",lineHeight:1.8}}>{editorial.article}</p><p><a href={editorial.sourceUrl} target="_blank" rel="noopener noreferrer">公式出典</a></p><img alt="記事の要点を示す解説画像" src={"data:image/png;base64,"+editorial.imageBase64} style={{width:"100%",maxWidth:650}}/></section>}
   {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void generate(p.id)}>AI下書き生成・安全審査</button> <button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void editorialPreview(p.id)}>v3長文＋画像プレビュー（未投稿）</button> <button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
   {candidates.map((c,i)=><article key={c.url+":"+c.category+":"+i} style={{border:"1px solid #777",borderRadius:10,padding:16,margin:"12px 0"}}>
