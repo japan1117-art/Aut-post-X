@@ -31,13 +31,14 @@ export async function createEditorialPreview(source:MarketSource):Promise<Editor
  const result=await client.chat.completions.create({
   model:process.env.OPENAI_MODEL||"gpt-5-mini",max_completion_tokens:1100,
   messages:[
-   {role:"system",content:EDITORIAL_POLICY+"\n公式記事の本文に明示されている内容のみ事実として扱う。引用は短く、外部資料は未確認なので追加しない。日本語で400〜650字の独自考察記事を作成。事実・考察・注目点・反対シナリオを明示。出力はJSONのみ: {\"headline\":\"...\",\"article\":\"...\",\"summary\":\"...\"}。summaryは画像用の短い要点（40文字以内）。"},
+   {role:"system",content:EDITORIAL_POLICY+"\n公式記事の本文に明示されている内容のみ事実として扱う。引用は短く、外部資料は未確認なので追加しない。日本語で400〜650字の独自考察記事を作成。見出しは日本語で読者の疑問や重要な論点を提示する（煽りや売買誘導は禁止）。冒頭2文でなぜ注目する価値があるかを具体的に説明。続けて「確認できる事実」「なぜ重要か」「考察」「反対シナリオ・リスク」「注目点」の順で読みやすく記述。市場への影響が小さい行政手続ニュースなら、影響を誇張せず、制度や仕組みを学べる教育記事にする。事実・考察・注目点・反対シナリオを明示。出力はJSONのみ: {\"headline\":\"...\",\"article\":\"...\",\"summary\":\"...\"}。summaryは画像用の短い要点（40文字以内）。"},
    {role:"user",content:JSON.stringify({sourceTitle:source.title,publisher:source.publisher,url:source.url,verifiedArticleText:original})}
   ]
  });
  const raw=(result.choices[0]?.message?.content||"").trim().replace(/^\x60\x60\x60(?:json)?\s*/,"").replace(/\s*\x60\x60\x60$/,"");
  const data=JSON.parse(raw) as {headline:string;article:string;summary:string};
  if(!data.headline||!data.article||!data.summary||[...data.article].length<250||[...data.article].length>1000||[...data.summary].length>40)throw new Error("Editorial length or format rejected");
+ if(/[A-Za-z]{8,}(?:\\s+[A-Za-z]{4,}){3,}/.test(data.headline))throw new Error("Japanese headline required");
  const safety=reviewEditorialSafety(data.headline+"\n"+data.article+"\n"+data.summary);
  if(!safety.pass)throw new Error("Editorial safety rejected: "+safety.reasons.join(","));
  const title=[...data.headline].slice(0,34).join("");
