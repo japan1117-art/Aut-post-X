@@ -48,8 +48,14 @@ export default function MarketOS() {
   setGeneratingId(id);setPreviewStatus({postId:id,state:"running",message:"生成中です。公式記事の取得とAI分析に最大60秒ほどかかります。"});setMessage("記事生成中です。結果は押したボタンのすぐ下に表示されます。");setEditorial(null);
   try{
    const r=await fetch("/api/market-os/editorial-preview",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({postId:id})});
-   const data=await r.json();if(!r.ok)throw Error(data.error||"生成失敗");
-   setEditorial(data);setPreviewStatus({postId:id,state:"success",message:"記事と画像を生成しました。結果はこの下に表示しています。Xには投稿していません。"});setMessage("v3記事・画像のプレビューを作成しました。Xには投稿していません。");
+   const responseText=await r.text();
+   let data:{headline?:string;article?:string;summary?:string;sourceUrl?:string;imageBase64?:string;error?:string;stage?:string;publicationEnabled?:boolean};
+   try{data=JSON.parse(responseText);}catch{
+    throw Error("サーバーからJSONが返りませんでした（HTTP "+r.status+"）。処理時間超過・サーバーエラーの可能性があります。"+(responseText.trim()?" 応答冒頭: "+responseText.trim().slice(0,160):" 応答本文なし"));
+   }
+   if(!r.ok)throw Error((data.error||"生成失敗")+"（HTTP "+r.status+(data.stage?" / "+data.stage:"")+"）");
+   if(!data.headline||!data.article||!data.imageBase64||!data.sourceUrl)throw Error("生成結果に記事または画像が含まれていません");
+   setEditorial(data as {headline:string;article:string;summary:string;sourceUrl:string;imageBase64:string});setPreviewStatus({postId:id,state:"success",message:"記事と画像を生成しました。結果はこの下に表示しています。Xには投稿していません。"});setMessage("v3記事・画像のプレビューを作成しました。Xには投稿していません。");
   }catch(e){const detail=e instanceof Error?e.message:String(e);setPreviewStatus({postId:id,state:"error",message:"生成失敗: "+detail});setMessage("生成に失敗しました: "+detail);}finally{setGeneratingId(null);}
  }
  async function metrics(){
