@@ -28,7 +28,7 @@ export default function MarketOS() {
   try{const r=await fetch("/api/market-os/status",{headers:{"x-admin-secret":secret}});const data=await r.json();if(!r.ok)throw Error(data.error||"取得失敗");setPosts(data.posts||[]);setLive(data.publishingEnabled);setTest(data.test||null);}catch(e){setMessage(String(e));}
  }
  async function draft(c:MarketCandidate){
-  try{const r=await fetch("/api/market-os/draft",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({title:c.title,url:c.url,publisher:c.publisher,publishedAt:c.publishedAt,category:c.category})});const data=await r.json();if(!r.ok)throw Error(data.error||"保存失敗");setMessage("結果: "+data.status);await refresh();}catch(e){setMessage(String(e));}
+  try{const r=await fetch("/api/market-os/draft",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({title:c.title,url:c.url,publisher:c.publisher,publishedAt:c.publishedAt,category:c.category})});const data=await r.json();if(!r.ok)throw Error(data.error||"保存失敗");setMessage("ニュース候補を保存しました。次に「保存済み下書き・公開履歴を確認」から日本語記事＋画像を生成してください。");await refresh();}catch(e){setMessage(String(e));}
  }
  async function generate(id:string){
   try{const r=await fetch("/api/market-os/generate",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({postId:id})});const data=await r.json();if(!r.ok)throw Error(data.error||"生成失敗");setMessage("下書き生成: "+data.mode);await refresh();}catch(e){setMessage(String(e));}
@@ -69,6 +69,7 @@ export default function MarketOS() {
   <p><button disabled={!secret} onClick={()=>void testV3()}>v3 日本語記事＋画像の総合テスト（X投稿なし）</button> {testResult&&<strong>結果: {testResult.status} {testResult.checks&&Object.entries(testResult.checks).map(([k,v])=>k+":"+(v?"PASS":"FAIL")).join(" / ")}</strong>}</p>
   {editorial&&<section style={{border:"2px solid #b7a173",borderRadius:14,padding:18,margin:"18px 0"}}><h2>v3 記事＋画像プレビュー（未投稿）</h2><h3>{editorial.headline}</h3><p style={{whiteSpace:"pre-wrap",lineHeight:1.8}}>{editorial.article}</p><p><a href={editorial.sourceUrl} target="_blank" rel="noopener noreferrer">公式出典</a></p><img alt="記事の要点を示す解説画像" src={"data:image/png;base64,"+editorial.imageBase64} style={{width:"100%",maxWidth:650}}/></section>}
   <h2>保存済み下書き（記事生成前・未投稿）</h2>
+  {posts.filter(p=>p.publication_state==="DRAFT").length===0&&<p role="status" style={{padding:16,border:"1px solid #b7a173",borderRadius:10}}>生成できる下書きがありません。下の「ニュース候補（英語の原文見出し・未投稿）」から「ニュース候補を保存（未投稿）」を押してください。保存できたらここに下書きが表示されます。すでに保存済み・投稿済みのニュースは重複保存できないため、別の候補を選んでください。</p>}
   {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void generate(p.id)}>AI下書き生成・安全審査</button> <button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void editorialPreview(p.id)}>日本語の考察記事＋画像を生成（未投稿）</button> <button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
   <h2>ニュース候補（英語の原文見出し・未投稿）</h2>
   {candidates.map((c,i)=><article key={c.url+":"+c.category+":"+i} style={{border:"1px solid #777",borderRadius:10,padding:16,margin:"12px 0"}}>
