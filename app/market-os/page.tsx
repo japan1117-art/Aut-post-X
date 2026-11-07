@@ -58,22 +58,24 @@ export default function MarketOS() {
   try{const r=await fetch("/api/market-os/publish",{method:"POST",headers:{"Content-Type":"application/json","x-admin-secret":secret},body:JSON.stringify({postId:id})});const data=await r.json();setMessage("公開結果: "+data.status+(data.xPostId?" X ID "+data.xPostId:""));await refresh();}catch(e){setMessage(String(e));}
  }
  return <main style={{maxWidth:920,margin:"auto",padding:24}}>
-  <h1>Market Content OS — 検証版</h1>
-  <p>投資・FX・暗号資産の一次情報候補を収集して採点します。AI下書き生成・安全審査・公開履歴確認が可能です。自動公開は専用フラグが無効の間ロックされます。</p>
+  <h1>Market Content OS — 日本語考察記事・画像の検証</h1>
+  <p>下の英語タイトルは公式ニュースの原文で、Xへの完成投稿文ではありません。ニュースを保存した後、v3の日本語考察記事と画像を生成・確認できます。テスト中はXに公開しません。</p>
   <section style={{display:"flex",gap:20,flexWrap:"wrap",margin:"20px 0"}}>{choices.map(c=><label key={c.key}><input type="checkbox" checked={categories.includes(c.key)} onChange={e=>setCategories(v=>e.target.checked?[...v,c.key]:v.filter(x=>x!==c.key))}/>{c.label}</label>)}</section>
   <label>管理用シークレット（サーバーには保存しません）<input type="password" autoComplete="off" value={secret} onChange={e=>setSecret(e.target.value)} style={{display:"block",padding:10,width:"100%",maxWidth:450}}/></label>
   <button onClick={scan} disabled={loading||!secret||!categories.length} style={{margin:"16px 0",padding:12}}>{loading?"取得中...":"公式情報を収集してスコアリング"}</button>
   <p role="status">{message}</p>
   {errors.length>0&&<p>取得できなかったソース: {errors.join(", ")}</p>}
   <p><button disabled={!secret} onClick={()=>void refresh()}>保存済み下書き・公開履歴を確認</button> <button disabled={!secret} onClick={()=>void metrics()}>X公開反応を取得</button> テスト: {test?`${test.state} / ${test.claimed_count}件確保（上限${test.max_posts}件）`:"未取得"} 公開機能: {live?"有効":"ロック中"}</p>
-  <p><button disabled={!secret} onClick={()=>void testV3()}>v3 総合テスト実行（X投稿なし）</button> {testResult&&<strong>結果: {testResult.status} {testResult.checks&&Object.entries(testResult.checks).map(([k,v])=>k+":"+(v?"PASS":"FAIL")).join(" / ")}</strong>}</p>
+  <p><button disabled={!secret} onClick={()=>void testV3()}>v3 日本語記事＋画像の総合テスト（X投稿なし）</button> {testResult&&<strong>結果: {testResult.status} {testResult.checks&&Object.entries(testResult.checks).map(([k,v])=>k+":"+(v?"PASS":"FAIL")).join(" / ")}</strong>}</p>
   {editorial&&<section style={{border:"2px solid #b7a173",borderRadius:14,padding:18,margin:"18px 0"}}><h2>v3 記事＋画像プレビュー（未投稿）</h2><h3>{editorial.headline}</h3><p style={{whiteSpace:"pre-wrap",lineHeight:1.8}}>{editorial.article}</p><p><a href={editorial.sourceUrl} target="_blank" rel="noopener noreferrer">公式出典</a></p><img alt="記事の要点を示す解説画像" src={"data:image/png;base64,"+editorial.imageBase64} style={{width:"100%",maxWidth:650}}/></section>}
-  {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void generate(p.id)}>AI下書き生成・安全審査</button> <button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void editorialPreview(p.id)}>v3長文＋画像プレビュー（未投稿）</button> <button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
+  <h2>保存済み下書き（記事生成前・未投稿）</h2>
+  {posts.map(p=><article key={p.id} style={{border:"1px solid #777",padding:12,margin:"10px 0"}}><p style={{whiteSpace:"pre-wrap"}}>{p.body}</p><p>{p.publication_state} {p.x_post_id||""}</p><button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void generate(p.id)}>AI下書き生成・安全審査</button> <button disabled={!secret||p.publication_state!=="DRAFT"} onClick={()=>void editorialPreview(p.id)}>日本語の考察記事＋画像を生成（未投稿）</button> <button disabled={!live||p.publication_state!=="DRAFT"} onClick={()=>void publish(p.id)}>Xに個別公開</button></article>)}
+  <h2>ニュース候補（英語の原文見出し・未投稿）</h2>
   {candidates.map((c,i)=><article key={c.url+":"+c.category+":"+i} style={{border:"1px solid #777",borderRadius:10,padding:16,margin:"12px 0"}}>
-   <strong>{c.score}/100 — {c.title}</strong>
+   <strong>ニュース候補・未投稿 | 評価 {c.score}/100</strong><p>{c.title}</p>
    <p>{c.publisher} / {c.category} / {new Date(c.publishedAt).toLocaleString("ja-JP")}</p>
    <p>需要 {c.breakdown.demand}・信頼性 {c.breakdown.credibility}・独自性 {c.breakdown.novelty}・鮮度 {c.breakdown.recency}</p>
-   <a href={c.url} target="_blank" rel="noopener noreferrer">一次情報を確認</a> <button disabled={!secret} onClick={()=>void draft(c)}>引用付き下書きを保存</button>
+   <a href={c.url} target="_blank" rel="noopener noreferrer">一次情報を確認</a> <button disabled={!secret} onClick={()=>void draft(c)}>ニュース候補を保存（未投稿）</button>
   </article>)}
  </main>;
 }
