@@ -21,7 +21,7 @@ export async function fetchOfficialArticle(source:MarketSource):Promise<string>{
  if(!r.ok||!(r.headers.get("content-type")||"").includes("text/html"))throw new Error("Official article unavailable");
  const html=(await r.text()).slice(0,350000);
  const text=extractText(html);
- if(text.length<450)throw new Error("Insufficient verified article text");
+ if(text.length<140)throw new Error("公式記事の本文が短すぎるか、抽出できませんでした。別のニュースを選んでください。");
  return text;
 }
 export type EditorialPreview={headline:string;article:string;summary:string;sourceUrl:string;imageBase64:string;mode:"PREVIEW_ONLY"};
